@@ -1,6 +1,7 @@
 # MLMI-Group-Project
 #### General info:
 Make sure the ***unzipped*** data files are placed under the 'data' folder after you clone the repository to your own environment
+Run data.py (or new_data.py, if it now correctly orders the slices), then train.py, then visualise.py
 <br />
 <br />
   
