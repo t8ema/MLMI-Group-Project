@@ -10,7 +10,7 @@ Processes the data into the expected format for train.py. Resamples into a consi
 <br />
 
 ## model.py:
-Runs a model on the image and mask data to create a segmentation prediction model
+Trains a model on the image and mask data to create a segmentation prediction model
 <br />
 <br />
 
