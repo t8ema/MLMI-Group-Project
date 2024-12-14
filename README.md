@@ -1,11 +1,11 @@
 # MLMI-Group-Project
 ## General info:
-Make sure the unzipped data files are placed under the 'data' folder when you clone the repository to your own environment
+Make sure the **unzipped** data files are placed under the 'data' folder after you clone the repository to your own environment
 <br />
 <br />
   
 ## data.py:
-Pre-processes the data, normalises images, selects the correct mask
+Processes the data into the expected format for train.py. Resamples into a consistent shape
 <br />
 <br />
 
@@ -14,10 +14,15 @@ Runs a model on the image and mask data to create a segmentation prediction mode
 <br />
 <br />
 
-## visualise_niftii_3d.py:
+## visualise.py
+See the results of the trained model
+<br />
+<br />
+
+## view_niftii_3d.py:
 Plots some of the raw data for observation
 <br />
 <br />
 
-## visualise_processed_image.py:
+## view_processed_image.py:
 Plots some of the processed data for observation
