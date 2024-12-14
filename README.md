@@ -1,6 +1,6 @@
 # MLMI-Group-Project
-## General info:
-Make sure the **unzipped** data files are placed under the 'data' folder after you clone the repository to your own environment
+#### General info:
+Make sure the ***unzipped*** data files are placed under the 'data' folder after you clone the repository to your own environment
 <br />
 <br />
   
