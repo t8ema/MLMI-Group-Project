@@ -2,6 +2,8 @@
 # Creates a new folder called processed_data and puts images and labels there
 # Also resamples data into a given target shape
 
+
+
 import os
 import nibabel as nib
 import numpy as np
@@ -14,15 +16,15 @@ data_dir = "MLMI-Group-Project/cw2/data"  # Directory containing images and mask
 output_dir = "MLMI-Group-Project/cw2/processed_data"  # Directory for processed outputs
 num_train = 50  # Number of training images
 num_test = 30  # Number of test images
-target_shape = (128, 128, 24)  # Final shape (x, y, number of slices)
+target_shape = (128, 128, 32)  # Shape to re-process images to (x, y, number of slices)
+slices_first = True # Put the slice dimension first, so if you have e.g. target_shape 128,128,32, it will become 32,128,128
 roi_value = 6  # Value in the mask to extract as ROI
+image_normalisation = True  # Whether to normalize images between 0 and 1
 
 
 
 # Ensure output directory exists
 os.makedirs(output_dir, exist_ok=True)
-
-
 
 # Process files
 train_count = 0
@@ -79,32 +81,38 @@ for file_name in sorted(os.listdir(data_dir)):
             print(f"{file_name} could not be resized correctly to {target_shape}, skipping...")
             continue
 
+        # Normalize image if the parameter is enabled
+        if image_normalisation:
+            resampled_img = (resampled_img - np.min(resampled_img)) / (np.max(resampled_img) - np.min(resampled_img))
+
         # Create a binary mask for the specified ROI value
         binary_mask = (resampled_mask == roi_value).astype(np.uint8)
+
+        # Rearrange axes to make slices the first dimension
+        if slices_first == True:
+            resampled_img = np.transpose(resampled_img, (2, 0, 1))  # From (x, y, slices) to (slices, x, y)
+            binary_mask = np.transpose(binary_mask, (2, 0, 1))      # Match the same reordering
 
         # Determine whether to save as train or test
         if total_processed < num_train:
             img_output_path = os.path.join(output_dir, f"image_train{train_count:02d}.npy")
             mask_output_path = os.path.join(output_dir, f"label_train{train_count:02d}.npy")
             train_count += 1
-            
+
             np.save(img_output_path, resampled_img)
             np.save(mask_output_path, binary_mask)
             print(f"Processed and saved: {file_name} as {os.path.basename(img_output_path)} and {os.path.basename(mask_output_path)}")
         elif total_processed < num_train + num_test:
             img_output_path = os.path.join(output_dir, f"image_test{test_count:02d}.npy")
-            mask_output_path = os.path.join(output_dir, f"label_test{test_count:02d}.npy")
+            #mask_output_path = os.path.join(output_dir, f"label_test{test_count:02d}.npy")#########################################
             test_count += 1
-            
+
             np.save(img_output_path, resampled_img)
+            #np.save(mask_output_path, binary_mask)
+            #print(f"Processed and saved: {file_name} as {os.path.basename(img_output_path)} and {os.path.basename(mask_output_path)}")
             print(f"Processed and saved: {file_name} as {os.path.basename(img_output_path)}")
         else:
             # Stop processing once test images are completed
             break
-
-        # Save the image and mask
-        #np.save(img_output_path, resampled_img)
-        #np.save(mask_output_path, binary_mask)
-        #print(f"Processed and saved: {file_name} as {os.path.basename(img_output_path)} and {os.path.basename(mask_output_path)}")
 
         total_processed += 1
