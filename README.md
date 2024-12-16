@@ -35,3 +35,8 @@ Plots some of the raw data for observation
 
 ## view_processed_image.py:
 Plots some of the processed data for observation
+<br />
+<br />
+
+# Current Tasks to complete:
+Update view_results.py to show the true mask and the predicted mask.
