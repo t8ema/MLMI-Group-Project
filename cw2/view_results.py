@@ -9,9 +9,9 @@ from matplotlib.widgets import Slider
 
 
 # Parameters
-image_file = "MLMI-Group-Project/cw2/processed_data/image_test21.npy"  # Directory where images are stored
-truth_mask_file = "MLMI-Group-Project/cw2/processed_data/label_test21.npy"  # Directory where masks are stored
-predicted_mask_file = "MLMI-Group-Project/cw2/results/label_test21_step000128-tf.npy"  # Directory where result masks are stored
+image_file = "MLMI-Group-Project/cw2/processed_data/image_test21.npy"  # Path to relevant image file
+truth_mask_file = "MLMI-Group-Project/cw2/processed_data/label_test21.npy"  # Path to relevant mask file
+predicted_mask_file = "MLMI-Group-Project/cw2/results/label_test21_step000128-tf.npy"  # Path to corresponding prediction in results folder
 
 
 
