@@ -4,7 +4,9 @@ Make sure the ***unzipped*** data files are placed under the 'data' folder after
 Run data.py, then train.py, then view_results.py
 <br />
 <br />
-data.py preprocessed the data, e.g. makes the image shapes consistent, normalisation etc. train.py trains the model and saves the results of the test_data (i.e. the predicted mask for a random sample of test data). These test data results are stored in the results folder, under the format 'label_test{image number}_step{step number}-tf.npy', e.g. 'label_test21_step000128-tf.npy', so if you run the model for 128 steps, you could find a file called 'label_test{image number}_step000128-tf.npy', where {image number} is the number of a random image selected from the data, such as 21 or 29, etc
+- data.py preprocessed the data, e.g. makes the image shapes consistent, normalisation etc
+- train.py trains the model and saves the results of the test_data (i.e. the predicted mask for a random sample of test data). These test data results are stored in the results folder, under the format 'label_test{image number}_step{step number}-tf.npy', e.g. 'label_test21_step000128-tf.npy', so if you run the model for 128 steps, you could find a file called 'label_test{image number}_step000128-tf.npy', where {image number} is the number of a random image selected from the data, such as 21 or 29, etc
+- view_results.py allows you to see these results by choosing the names of the file to view
 <br />
 <br />
   
