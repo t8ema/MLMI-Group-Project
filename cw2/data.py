@@ -1,8 +1,9 @@
 # Processes data in line with expected format for train.py
 # Creates a new folder called processed_data and puts images and labels there
 # Also resamples data into a given target shape
+# test data are also created with labels for testing of the model later (see visualise results)
 
-
+# TO DO: Add a validation set, so we can validate the model on completely unseen data
 
 import os
 import nibabel as nib
@@ -16,12 +17,10 @@ data_dir = "MLMI-Group-Project/cw2/data"  # Directory containing images and mask
 output_dir = "MLMI-Group-Project/cw2/processed_data"  # Directory for processed outputs
 num_train = 50  # Number of training images
 num_test = 30  # Number of test images
-target_shape = (128, 128, 32)  # Shape to re-process images to (x, y, number of slices)
+target_shape = (64, 64, 32)  # Shape to re-process images to (x, y, number of slices) - originally used (128, 128, 32), but is faster with (64, 64, 32)
 slices_first = True # Put the slice dimension first, so if you have e.g. target_shape 128,128,32, it will become 32,128,128
 roi_value = 6  # Value in the mask to extract as ROI
 image_normalisation = True  # Whether to normalize images between 0 and 1
-
-
 
 # Ensure output directory exists
 os.makedirs(output_dir, exist_ok=True)
@@ -104,13 +103,13 @@ for file_name in sorted(os.listdir(data_dir)):
             print(f"Processed and saved: {file_name} as {os.path.basename(img_output_path)} and {os.path.basename(mask_output_path)}")
         elif total_processed < num_train + num_test:
             img_output_path = os.path.join(output_dir, f"image_test{test_count:02d}.npy")
-            #mask_output_path = os.path.join(output_dir, f"label_test{test_count:02d}.npy")#########################################
+            mask_output_path = os.path.join(output_dir, f"label_test{test_count:02d}.npy")#########################################
             test_count += 1
 
             np.save(img_output_path, resampled_img)
-            #np.save(mask_output_path, binary_mask)
-            #print(f"Processed and saved: {file_name} as {os.path.basename(img_output_path)} and {os.path.basename(mask_output_path)}")
-            print(f"Processed and saved: {file_name} as {os.path.basename(img_output_path)}")
+            np.save(mask_output_path, binary_mask)
+            print(f"Processed and saved: {file_name} as {os.path.basename(img_output_path)} and {os.path.basename(mask_output_path)}")
+            #print(f"Processed and saved: {file_name} as {os.path.basename(img_output_path)}")
         else:
             # Stop processing once test images are completed
             break
