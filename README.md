@@ -1,30 +1,25 @@
 # MLMI-Group-Project
 #### General info:
 Make sure the ***unzipped*** data files are placed under the 'data' folder after you clone the repository to your own environment
-Run data.py (or new_data.py, if it now correctly orders the slices), then train.py, then view_results.py
+Run data.py, then train.py, then view_results.py
 <br />
 <br />
-train.py automatically saves some examples of the test data results to the results folder. These can be viewed using view_results.py
+data.py preprocessed the data, e.g. makes the image shapes consistent, normalisation etc. train.py trains the model and saves the results of the test_data (i.e. the predicted mask for a random sample of test data). These test data results are stored in the results folder, under the format 'label_test{image number}_step{step number}-tf.npy', e.g. 'label_test21_step000128-tf.npy', so if you run the model for 128 steps, you could find a file called 'label_test{image number}_step000128-tf.npy', where {image number} is the number of a random image selected from the data, such as 21 or 29, etc
 <br />
 <br />
   
 ## data.py:
-Processes the data into the expected format for train.py. Resamples into a consistent shape
+Processes the data into the expected format for train.py. Resamples into a consistent shape, and normalises images between 0 and 1
 <br />
 <br />
 
 ## model.py:
-Trains a model on the image and mask data to create a segmentation prediction model
+Trains a model on the image and mask data to create a segmentation prediction model. Also saves predictions on test data into the results folder
 <br />
 <br />
 
 ## view_results.py
 See the results of the trained model in 3D (scroll through slices)
-<br />
-<br />
-
-## visualise.py
-See the results of the trained model - better to use view_results.py over this, because this one heavily downsamples the image before allowing you to see it, so subtle details are lost. This script will likely be archived soon.
 <br />
 <br />
 
@@ -37,6 +32,3 @@ Plots some of the raw data for observation
 Plots some of the processed data for observation
 <br />
 <br />
-
-# Current Tasks to complete:
-Update view_results.py to show the true mask and the predicted mask.
