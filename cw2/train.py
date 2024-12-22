@@ -167,9 +167,9 @@ def train_step(model, weights, optimizer, x, y):
 
 # optimisation configuration
 learning_rate = 1e-4
-total_iter = 10
+total_iter = 128
 freq_print = 1  # in iteration
-freq_test = 2  # in iteration
+freq_test = 4  # in iteration
 n = 50  # 50 training image-label pairs
 size_minibatch = 4
 
