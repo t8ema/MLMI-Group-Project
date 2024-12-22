@@ -6,7 +6,7 @@
 
 
 
-image_index = 5  # Index of image to select
+image_index = 5  # Index to select an image
 
 
 
