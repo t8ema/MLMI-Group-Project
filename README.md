@@ -12,7 +12,6 @@ Run data.py, then train.py, then view_results.py
 
 ***IMPORTANT:***
 <br />
-<br />
 - Make sure you empty the results folder (delete all files inside it) before you run train.py, otherwise you will still have the results of the previous model you ran
 - Make sure you empty the processed image folder before running data.py
   
