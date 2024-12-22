@@ -9,9 +9,13 @@ Run data.py, then train.py, then view_results.py
 - view_results.py allows you to see these results by choosing the names of the file to view
 <br />
 <br />
-Make sure you empty the results folder (delete all files inside it) before you run train.py, otherwise you will still have the results of the previous model you ran
+
+***IMPORTANT:***
 <br />
-Make sure you empty the processed image folder before running data.py
+<br />
+- Make sure you empty the results folder (delete all files inside it) before you run train.py, otherwise you will still have the results of the previous model you ran
+<br />
+- Make sure you empty the processed image folder before running data.py
   
 ## data.py:
 Processes the data into the expected format for train.py. Resamples into a consistent shape, and normalises images between 0 and 1
