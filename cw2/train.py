@@ -12,6 +12,12 @@ os.environ["CUDA_VISIBLE_DEVICES"]="0"
 path_to_data = './MLMI-Group-Project/cw2/processed_data'
 RESULT_PATH = './MLMI-Group-Project/cw2/results' 
 
+# Check if RESULT_PATH is empty
+if os.path.exists(RESULT_PATH) and os.listdir(RESULT_PATH):
+    raise ValueError(f"Output directory '{RESULT_PATH}' is not empty! \n Please delete all files in '{RESULT_PATH}' before running this script.")
+
+
+
 ## Define functions for network layers
 def conv3d(input, filters, downsample=False, activation=True, batch_norm=False):
     if downsample: strides = [1,2,2,2,1]
