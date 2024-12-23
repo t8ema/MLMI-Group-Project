@@ -18,6 +18,17 @@ if os.path.exists(RESULT_PATH) and os.listdir(RESULT_PATH):
 
 
 
+# Set seeds for reproducibility
+SEED = 40
+os.environ["PYTHONHASHSEED"] = str(SEED)
+random.seed(SEED)
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
+# Enable deterministic operations in TensorFlow
+os.environ["TF_DETERMINISTIC_OPS"] = "1"
+
+
+
 ## Define functions for network layers
 def conv3d(input, filters, downsample=False, activation=True, batch_norm=False):
     if downsample: strides = [1,2,2,2,1]
