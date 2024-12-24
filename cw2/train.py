@@ -8,15 +8,12 @@ import tensorflow as tf
 import numpy as np
 
 
+
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 path_to_data = './MLMI-Group-Project/cw2/processed_data'
 RESULT_PATH = './MLMI-Group-Project/cw2/results' 
-
-# Check if RESULT_PATH is empty
-if os.path.exists(RESULT_PATH) and os.listdir(RESULT_PATH):
-    raise ValueError(f"Output directory '{RESULT_PATH}' is not empty! \n Please delete all files in '{RESULT_PATH}' before running this script.")
-
-
+SAVE_PATH = './MLMI-Group-Project/cw2/saved_models'
+os.makedirs(SAVE_PATH, exist_ok=True)  # Create directory if it doesn't exist
 
 # Set seeds for reproducibility
 SEED = 40
@@ -27,7 +24,9 @@ tf.random.set_seed(SEED)
 # Enable deterministic operations in TensorFlow
 os.environ["TF_DETERMINISTIC_OPS"] = "1"
 
-
+# Check if RESULT_PATH is empty
+if os.path.exists(RESULT_PATH) and os.listdir(RESULT_PATH):
+    raise ValueError(f"Output directory '{RESULT_PATH}' is not empty! \n Please delete all files in '{RESULT_PATH}' before running this script.")
 
 ## Define functions for network layers
 def conv3d(input, filters, downsample=False, activation=True, batch_norm=False):
@@ -65,7 +64,7 @@ def add_variable(var_shape, var_list, var_name=None, initialiser=None):
         var_list.append(tf.Variable(initialiser(var_shape), name=var_name, trainable=True))
     return var_list
 
-## Define a model (a 3D U-Net variant) with residual layers with trinable weights
+## Define a model (a 3D U-Net variant) with residual layers with trainable weights
 # ref: https://arxiv.org/abs/1512.03385  & https://arxiv.org/abs/1505.04597
 num_channels = 32
 nc = [num_channels*(2**i) for i in range(4)]
@@ -193,7 +192,16 @@ size_minibatch = 4
 num_minibatch = int(n/size_minibatch)  # how many minibatches in each epoch
 indices_train = [i for i in range(n)]
 DataFeeder = DataReader(path_to_data)
-optimizer = tf.optimizers.Adam(learning_rate)
+
+#optimizer = tf.optimizers.Adam(learning_rate)
+learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate=1e-4,
+    decay_steps=20,
+    decay_rate=0.90,
+    staircase=True
+)
+optimizer = tf.optimizers.Adam(learning_rate_schedule)
+
 for step in range(total_iter):
 
     # shuffle data every time start a new set of minibatches
