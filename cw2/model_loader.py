@@ -18,6 +18,9 @@ model_save_path = './MLMI-Group-Project/cw2/saved_models/residual_unet_step_124.
 path_to_image = './MLMI-Group-Project/cw2/processed_data/image_test00.npy' # Path to image you want to predict on
 truth_mask_file = "./MLMI-Group-Project/cw2/processed_data/label_test00.npy"  # Path to relevant truth mask file
 
+binarize_mask = True  # When True, make predicted mask binary (predicted values > binary_threshold become 1, and lower values become 0)
+binary_threshold = 0.5  # Threshold for binary masks - the default standard is 0.5
+
 
 
 # Load image and process into format accepted by the model (downsample, grayscale channel, batch size dimension)
@@ -45,7 +48,7 @@ print(input_tensor.shape)
 # Choose the loaded model
 loaded_model = tf.saved_model.load(model_save_path)
 
-# Call the loaded model - make a prediction on the input tensor
+# Call the loaded model
 pred = loaded_model(input_tensor)
 
 print('Shape of predicted image: ', pred.shape)
@@ -140,6 +143,13 @@ if __name__ == "__main__":
     # Load the predicted mask
     predicted_mask_data = pred[0, :, :, :, 0]
     
+    if binarize_mask == True:
+        # Make the mask binary
+        predicted_mask_data = tf.where(predicted_mask_data > binary_threshold, 1, 0)
+    
+    # Convert to NumPy array
+    predicted_mask_data = predicted_mask_data.numpy()
+    
     # Load the truth mask
     truth_mask_data = np.load(truth_mask_file)
     truth_mask_data = truth_mask_data[::2, ::2, ::2]
@@ -150,4 +160,3 @@ if __name__ == "__main__":
 
     # Call the visualization function
     visualize_data(image_data, predicted_mask_data, truth_mask_data)
-
