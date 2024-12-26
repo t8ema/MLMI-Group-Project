@@ -1,4 +1,8 @@
 # Train on train folder data
+# Train for semi-supervised experiment
+# This version does not downsample the data - the data will be the same shape as in the processed data
+
+
 
 import os
 import random
@@ -166,7 +170,8 @@ class DataReader:
         return self.load_npy_files(["label_train%03d.npy" % idx for idx in indices_mb])
     def load_npy_files(self, file_names):
         images = [np.float32(np.load(os.path.join(self.folder_name, fn))) for fn in file_names]
-        return np.expand_dims(np.stack(images, axis=0), axis=4)[:, ::2, ::2, ::2, :]
+        #return np.expand_dims(np.stack(images, axis=0), axis=4)[:, ::2, ::2, ::2, :]  # Downsample the images by 2
+        return np.expand_dims(np.stack(images, axis=0), axis=4)[:, :, :, :, :]  # No downsampling
 
 
 ## training
@@ -180,23 +185,23 @@ def train_step(model, weights, optimizer, x, y):
     return loss
 
 # optimisation configuration
-learning_rate = 7e-5
-total_iter = 500
-freq_print = 1  # in iteration
-freq_save = 50 # How often to save the model
-n = 200  # 200 training image-label pairs
-size_minibatch = 4
+learning_rate = 7e-5 # Initial learning rate (see schedule below)
+total_iter = 500 # Total iterations
+freq_print = 1  # Print loss
+freq_save = 2 # How often to save the model
+n = 200  # Total number of training image-label pairs
+size_minibatch = 4 # Number of training images in the minibatch
 
-num_minibatch = int(n/size_minibatch)  # how many minibatches in each epoch
+num_minibatch = int(n/size_minibatch)  # Number of minibatches in each epoch
 indices_train = [i for i in range(n)]
 DataFeeder = DataReader(path_to_data)
 
 #optimizer = tf.optimizers.Adam(learning_rate)
 learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=7e-5,
-    decay_steps=30,
-    decay_rate=0.9,
-    staircase=True
+    initial_learning_rate = learning_rate,
+    decay_steps = 30,
+    decay_rate = 0.9,
+    staircase = True
 )
 optimizer = tf.optimizers.Adam(learning_rate_schedule)
 
