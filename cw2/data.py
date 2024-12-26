@@ -20,10 +20,13 @@ num_train = 200  # Number of training images
 num_val = 150  # Number of test images
 num_unlabel = 100
 
-target_shape = (64, 64, 32)  # Shape to re-process images to (x, y, number of slices) - original = (128, 128, 32)
+target_shape = (64, 64, 32)  # Shape to re-process images to (x, y, number of slices) - for quicker training, do (32, 32, 16) (suggested) or (32, 32, 32)
 slices_first = True # Put the slice dimension first, so if you have e.g. target_shape 128,128,32, it will become 32,128,128
+
 roi_value = 6  # Value in the mask to extract as ROI
 image_normalisation = True  # Whether to normalize images between 0 and 1
+
+
 
 # Check if output directories are empty
 if os.path.exists(train_dir) and os.listdir(train_dir):
