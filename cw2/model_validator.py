@@ -1,3 +1,7 @@
+# This script validates the model by producing an average dice over the whole dataset
+
+
+
 import os
 import random
 
@@ -9,12 +13,17 @@ from matplotlib.widgets import Slider
 
 
 
-model_save_path = './MLMI-Group-Project/cw2/saved_models/residual_unet_step_50.tf' # Path to the model you want to load
+model_save_path = './MLMI-Group-Project/cw2/saved_models/residual_unet_step_4.tf' # Path to the model you want to load
 
 path_to_val_folder = './MLMI-Group-Project/cw2/val' # Path to validation folder
+# images and labels have names image_val000.npy up to image_val099.npy, label_val000.npy to label_val099.npy
 
 binarize_mask = True  # When True, make predicted mask binary (predicted values > binary_threshold become 1, and lower values become 0)
 binary_threshold = 0.5  # Threshold for binary masks - the default standard is 0.5
+
+
+
+
 
 
 
@@ -24,6 +33,7 @@ loaded_model = tf.saved_model.load(model_save_path)
 
 
 print('-------------------------------------------------')
+
 
 
 
@@ -45,7 +55,6 @@ def calculate_dice_coefficient(predicted, truth):
     return (2.0 * intersection) / volume_sum
 
 
-
 if __name__ == "__main__":
     dice_scores = []
 
@@ -56,8 +65,9 @@ if __name__ == "__main__":
 
         # Load and preprocess the image
         image = np.load(image_file)
-        downsampled_image = image[::2, ::2, ::2]
-        gray_chan_image = np.expand_dims(downsampled_image, axis=-1)
+        #downsampled_image = image[::2, ::2, ::2]
+        #gray_chan_image = np.expand_dims(downsampled_image, axis=-1)
+        gray_chan_image = np.expand_dims(image, axis=-1)
         batch_dim_image = np.expand_dims(gray_chan_image, axis=0)
         stacked_image = np.tile(batch_dim_image, (4, 1, 1, 1, 1))  # Duplicate the image to fit batch size of 4
 
@@ -72,7 +82,8 @@ if __name__ == "__main__":
 
         # Load and downsample the ground truth mask
         truth_mask = np.load(truth_mask_file)
-        truth_mask = truth_mask[::2, ::2, ::2]
+        print('Shape of truth mask: ', truth_mask.shape)
+        #truth_mask = truth_mask[::2, ::2, ::2]
 
         # Calculate the Dice coefficient
         dice = calculate_dice_coefficient(pred, truth_mask)
