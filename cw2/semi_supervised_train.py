@@ -27,13 +27,14 @@ os.makedirs(output_dir, exist_ok=True)
 
 
 # Function to copy files with new naming convention
-def copy_files(source_dir, dest_dir, prefix, num_files):
+# Function to copy files with new naming convention
+def copy_files(source_dir, dest_dir, prefix, start_index, num_files):
     for i in range(num_files):
         image_src = os.path.join(source_dir, f"image_{prefix}{i:03d}.npy")
         label_src = os.path.join(source_dir, f"label_{prefix}{i:03d}.npy")
 
-        image_dest = os.path.join(dest_dir, f"image_{prefix}{i:03d}.npy")
-        label_dest = os.path.join(dest_dir, f"label_{prefix}{i:03d}.npy")
+        image_dest = os.path.join(dest_dir, f"image_pseudo{start_index + i:03d}.npy")
+        label_dest = os.path.join(dest_dir, f"label_pseudo{start_index + i:03d}.npy")
 
         if os.path.exists(image_src) and os.path.exists(label_src):
             shutil.copy(image_src, image_dest)
@@ -42,15 +43,12 @@ def copy_files(source_dir, dest_dir, prefix, num_files):
             print(f"Warning: File {image_src} or {label_src} does not exist and will be skipped.")
 
 # Copy labelled images
-copy_files(labelled_dir, output_dir, "train", num_labelled_images)
+copy_files(labelled_dir, output_dir, "train", 0, num_labelled_images)
 
 # Copy pseudo-labelled images
-copy_files(pseudo_dir, output_dir, "pseudo", num_unlabelled_images)
+copy_files(pseudo_dir, output_dir, "unlabel", num_labelled_images, num_unlabelled_images)
 
 print(f"Copied {num_labelled_images} labelled and {num_unlabelled_images} pseudo-labelled files to {output_dir}.")
-
-print('Data re-processing complete.')
-
 # ---------------------------
 # End of re-processing
 
