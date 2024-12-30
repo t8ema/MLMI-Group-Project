@@ -20,7 +20,7 @@ Processes the data into the expected format for train.py. Resamples into a consi
 <br />
 
 # **train.py:**
-Trains the model and saves trained models in the saved_models folder. These models can be loaded with the model_loader script (to view results for a single image)
+Trains the model (fully supervised, i.e. on the data that already has labels) and saves trained models in the saved_models folder. These models can be loaded with the model_loader script (to view results for a single image)
 <br />
 <br />
 
