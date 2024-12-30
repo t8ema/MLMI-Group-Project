@@ -250,7 +250,7 @@ size_minibatch = 4
 
 num_minibatch = int(n/size_minibatch)  # how many minibatches in each epoch
 indices_train = [i for i in range(n)]
-DataFeeder = DataReader(pseudo_dir)
+DataFeeder = DataReader(output_dir)
 
 #optimizer = tf.optimizers.Adam(learning_rate)
 learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
