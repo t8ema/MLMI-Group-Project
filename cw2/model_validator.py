@@ -58,15 +58,17 @@ def calculate_dice_coefficient(predicted, truth):
 if __name__ == "__main__":
     dice_scores = []
 
-    for i in range(100):  # Loop through all validation images
+    # Get the list of all image files in the validation folder
+    image_files = sorted([f for f in os.listdir(path_to_val_folder) if f.startswith("image_val") and f.endswith(".npy")])
+    num_images = len(image_files)
+
+    for i in range(num_images):  # Loop through all validation images dynamically
         # Generate file paths
         image_file = os.path.join(path_to_val_folder, f"image_val{i:03d}.npy")
         truth_mask_file = os.path.join(path_to_val_folder, f"label_val{i:03d}.npy")
 
         # Load and preprocess the image
         image = np.load(image_file)
-        #downsampled_image = image[::2, ::2, ::2]
-        #gray_chan_image = np.expand_dims(downsampled_image, axis=-1)
         gray_chan_image = np.expand_dims(image, axis=-1)
         batch_dim_image = np.expand_dims(gray_chan_image, axis=0)
         stacked_image = np.tile(batch_dim_image, (4, 1, 1, 1, 1))  # Duplicate the image to fit batch size of 4
@@ -80,16 +82,12 @@ if __name__ == "__main__":
         if binarize_mask:
             pred = (pred > binary_threshold).astype(np.uint8)
 
-        # Load and downsample the ground truth mask
+        # Load the ground truth mask
         truth_mask = np.load(truth_mask_file)
-        print('Shape of truth mask: ', truth_mask.shape)
-        #truth_mask = truth_mask[::2, ::2, ::2]
 
         # Calculate the Dice coefficient
         dice = calculate_dice_coefficient(pred, truth_mask)
         dice_scores.append(dice)
-
-        #print(f"Processed image {i:03d}, Dice coefficient: {dice:.4f}")
 
     # Calculate the average Dice coefficient
     average_dice = np.mean(dice_scores)
