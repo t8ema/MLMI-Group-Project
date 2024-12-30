@@ -23,6 +23,9 @@ output_dir = "MLMI-Group-Project/cw2/pseudo_train_data"
 
 # Ensure the output directory exists
 os.makedirs(output_dir, exist_ok=True)
+# Check if output directory is empty
+if os.path.exists(output_dir) and os.listdir(output_dir):
+    raise ValueError(f"Output directory '{output_dir}' is not empty! \n Please delete all files in '{output_dir}' before running this script.")
 
 
 
