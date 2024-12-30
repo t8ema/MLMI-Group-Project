@@ -7,8 +7,11 @@
 <br />
 
 # **Running order:**
-(See information below for more info on each script) <br />
+<br />
 data.py -> train.py  -> semi-supervised_labeller.py -> semi_supervised_train.py <br />
+<br />
+(See information below for more info on each script) <br />
+<br />
 You can run model_validator.py on any saved models at any point to quantify their performance
 <br />
 <br />
