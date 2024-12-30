@@ -1,4 +1,4 @@
-# This script generates labels for unlabelled data using a given saved model
+# This script generates and saves labels for unlabelled data using a given saved model
 
 
 
