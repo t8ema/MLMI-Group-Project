@@ -44,7 +44,9 @@ if __name__ == "__main__":
     for i, image_name in enumerate(unlabelled_images):  # Loop through all files
         # Generate file paths
         image_file = os.path.join(path_to_unlabel_folder, image_name)
-        output_file = os.path.join(output_folder, f"label_{image_name}")
+        
+        # Adjust output file naming
+        output_file = os.path.join(output_folder, f"label_{image_name.replace('image_', '')}")
 
         # Load and preprocess the image
         image = np.load(image_file)
