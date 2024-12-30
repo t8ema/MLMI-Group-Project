@@ -38,10 +38,13 @@ for filename in os.listdir(path_to_unlabel_folder):
 
 
 if __name__ == "__main__":
-    for i in range(100):  # Loop through unlabelled images
+    # Get a sorted list of all .npy files in the folder
+    unlabelled_images = sorted([f for f in os.listdir(path_to_unlabel_folder) if f.endswith('.npy')])
+
+    for i, image_name in enumerate(unlabelled_images):  # Loop through all files
         # Generate file paths
-        image_file = os.path.join(path_to_unlabel_folder, f"image_unlabel{i:03d}.npy")
-        output_file = os.path.join(output_folder, f"label_unlabel{i:03d}.npy")
+        image_file = os.path.join(path_to_unlabel_folder, image_name)
+        output_file = os.path.join(output_folder, f"label_{image_name}")
 
         # Load and preprocess the image
         image = np.load(image_file)
