@@ -5,6 +5,13 @@
 - Make sure you empty the train, val and unlabel folders before re-running the data.py script <br />
 <br />
 <br />
+
+# **Running order:**
+(See information below for more info on each script) <br />
+data.py -> train.py  -> semi-supervised_labeller.py -> semi_supervised_train.py <br />
+You can run model_validator.py on any saved models at any point to quantify their performance
+<br />
+<br />
   
 # **data.py:**
 Processes the data into the expected format for train.py. Resamples into a consistent shape, and normalises images between 0 and 1. Puts data into train, val and unlabel folders. Images in the unlabel folder are stored withoput labels, so are the unlabelled data that we can make predictions on and use in the training data for later models.
@@ -18,6 +25,16 @@ Trains the model and saves trained models in the saved_models folder. These mode
 
 # **model_validator.py:**
 Allows models to be validated by calculating an average dice value over the validation set
+<br />
+<br />
+
+# **semi-supervised_labeller.py:**
+Allows you to pseudo-label data using a specified saved model. If you already labelled the data before, it will delete the labels so you can run this script even if you ran it before
+<br />
+<br />
+
+# **semi-supervised_train.py:**
+Allows you to train on a combination of labelled and unlabelled data. You can select the number of labelled and unlabelled images to use. You can also choose to use only unlabelled images
 <br />
 <br />
 
