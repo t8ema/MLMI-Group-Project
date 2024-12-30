@@ -1,6 +1,5 @@
 # **IMPORTANT INFO:**
 - Make sure the UNZIPPED data files are placed under the 'data' folder after you clone the repository to your own environment <br />
-- Run data.py, then train.py, then model_validator.py <br />
 - Make sure you rename any models you want to keep in saved_models before you run train.py, otherwise these models will be overwritten <br />
 - Make sure you empty the train, val and unlabel folders before re-running the data.py script <br />
 <br />
