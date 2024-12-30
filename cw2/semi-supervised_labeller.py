@@ -24,6 +24,19 @@ print('-------------------------------------------------')
 
 
 
+# Remove pseudo labels (only the labels, not the images) in the 'unlabel' folder:
+# Loop through all files in the directory
+for filename in os.listdir(path_to_unlabel_folder):
+    # Check if the file matches the pattern "label_unlabelxxx.npy"
+    if filename.startswith("label_unlabel") and filename.endswith(".npy"):
+        # Full path to the file
+        file_path = os.path.join(path_to_unlabel_folder, filename)
+        # Remove the file
+        os.remove(file_path)
+        print(f"Deleted: {file_path}")
+
+
+
 if __name__ == "__main__":
     for i in range(100):  # Loop through unlabelled images
         # Generate file paths
