@@ -31,3 +31,7 @@ for file_name in os.listdir(data_dir):
 print(f"Total NIfTI images: {total_images_count}")
 print(f"Images meeting the minimum shape {minimum_shape}: {valid_images_count}")
 print(f"Invalid images: {total_images_count - valid_images_count}")
+
+# (32, 32, 16): 588 valid, 1 invalid
+# (64, 64, 16): 588 valid, 1 invalid
+# (64, 64, 32): 454 valid, 135 invalid
