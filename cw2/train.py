@@ -184,13 +184,18 @@ def train_step(model, weights, optimizer, x, y):
     optimizer.apply_gradients(zip(gradients, weights))
     return loss
 
-# optimisation configuration
-learning_rate = 7e-5 # Initial learning rate (see schedule below)
-total_iter = 500 # Total iterations
-freq_print = 1  # Print loss
+# Calculate number of training images
+image_files = sorted([f for f in os.listdir(path_to_data) if f.startswith("image_train") and f.endswith(".npy")])
+num_images = len(image_files)
+print('Number of training images: ', num_images)
+
+# Model parameters
+learning_rate = 2e-7  # Initial learning rate
+total_iter = 500  # Total number of iterations
+freq_print = 1  # How often to print
 freq_save = 2 # How often to save the model
-n = 200  # Total number of training image-label pairs
-size_minibatch = 4 # Number of training images in the minibatch
+n = num_images  # Number of training image-label pairs
+size_minibatch = 4
 
 num_minibatch = int(n/size_minibatch)  # Number of minibatches in each epoch
 indices_train = [i for i in range(n)]
