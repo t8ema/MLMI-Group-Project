@@ -35,7 +35,7 @@ Allows you to pseudo-label data using a specified saved model. If you already la
 <br />
 
 # **semi-supervised_train.py:**
-Allows you to train on a combination of labelled and unlabelled data. You can select the number of labelled and unlabelled images to use. You can also choose to use only unlabelled images
+Allows you to train on a combination of labelled and unlabelled data. You can select the number of labelled and unlabelled images to use. You can also choose to use only unlabelled images. NOTE: This script automatically re-organises the data into a new folder for training. You can turn this off if you've already done it, but you will need to keep this feature on if yiu haven't run this code before
 <br />
 <br />
 
