@@ -1,4 +1,4 @@
-Put successful models here, i.e. models with high average dice values over the validation set. Please use the naming convention specified below. When you upload a model, please add it to the model list below the naming convention with any comments (i.e. how many training images were used, and if it is a semi-supervised model, specify how many fully labelled and how many pseudo labelled images were used).
+Put successful models here, i.e. models with high average dice values over the validation set. Please use the naming convention specified below. When you upload a model, please add it to the model list below the naming convention with any comments i.e. how many training images were used, what the learning rate (and learning rate decay) were, and if it is a semi-supervised model, specify how many fully labelled and how many pseudo labelled images were used.
 </br>
 </br>
 
