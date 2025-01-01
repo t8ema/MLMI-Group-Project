@@ -16,7 +16,7 @@ output_dir = "MLMI-Group-Project/cw2/pseudo_train_data"  # Directory where data 
 
 # Choose whether or not to re-process data into the pseudo_train_data folder
 # If you want to train a model on the same data, then set this to false
-# If you have created a different supervised model, and want to re-label the unlabelled data, set this to True
+# If you have created a different supervised model, and have re-labelled the unlabelled data, set this to True
 re_process_data = True
 
 
