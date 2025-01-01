@@ -1,5 +1,4 @@
 # This script re-processes the data, and then allows training on the produced label and pseudo-label split
-# This script may have some small problems, it hasn't been tested yet, but should work as expected if you dont try anything strange
 
 
 
@@ -18,7 +17,7 @@ output_dir = "MLMI-Group-Project/cw2/pseudo_train_data"  # Directory where data 
 # Choose whether or not to re-process data into the pseudo_train_data folder
 # If you want to train a model on the same data, then set this to false
 # If you have created a different supervised model, and want to re-label the unlabelled data, set this to True
-re_process_data = False
+re_process_data = True
 
 
 
