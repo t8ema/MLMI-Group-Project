@@ -9,50 +9,56 @@ import numpy as np
 
 
 
-# First, re-process the data:
-# (This doesn't delete the old data, just copies over data as specified into new folder)
-# ---------------------------
-# Parameters
-num_labelled_images = 200  # Number of labelled images to use
-num_unlabelled_images = 100  # Number of pseudo-labelled images to use
-
 labelled_dir = "MLMI-Group-Project/cw2/train"  # Directory containing labelled data
 pseudo_dir = "MLMI-Group-Project/cw2/unlabel"  # Directory containing pseudo-labelled data
-
-output_dir = "MLMI-Group-Project/cw2/pseudo_train_data"
-
-# Ensure the output directory exists
-os.makedirs(output_dir, exist_ok=True)
-# Check if output directory is empty
-if os.path.exists(output_dir) and os.listdir(output_dir):
-    raise ValueError(f"Output directory '{output_dir}' is not empty! \n Please delete all files in '{output_dir}' before running this script.")
+output_dir = "MLMI-Group-Project/cw2/pseudo_train_data"  # Directory where data will be stored for training on a combination of labelled and pseudo-labelled data
 
 
 
-# Function to copy files with new naming convention
-# Function to copy files with new naming convention
-def copy_files(source_dir, dest_dir, prefix, start_index, num_files):
-    for i in range(num_files):
-        image_src = os.path.join(source_dir, f"image_{prefix}{i:03d}.npy")
-        label_src = os.path.join(source_dir, f"label_{prefix}{i:03d}.npy")
+# Choose whether or not to re-process data into the pseudo_train_data folder
+# If you want to train a model on the same data, then set this to false
+# If you have created a different supervised model, and want to re-label the unlabelled data, set this to True
+re_process_data = False
 
-        image_dest = os.path.join(dest_dir, f"image_pseudo{start_index + i:03d}.npy")
-        label_dest = os.path.join(dest_dir, f"label_pseudo{start_index + i:03d}.npy")
 
-        if os.path.exists(image_src) and os.path.exists(label_src):
-            shutil.copy(image_src, image_dest)
-            shutil.copy(label_src, label_dest)
-        else:
-            print(f"Warning: File {image_src} or {label_src} does not exist and will be skipped.")
 
-# Copy labelled images
-copy_files(labelled_dir, output_dir, "train", 0, num_labelled_images)
+# First, re-process the data (if re_process_data is True):
+# (This doesn't delete the other data you have, it just copies over data as specified into new folder, for training)
+if re_process_data:
+    # Parameters
+    num_labelled_images = 200  # Number of labelled images to use
+    num_unlabelled_images = 100  # Number of pseudo-labelled images to use
 
-# Copy pseudo-labelled images
-copy_files(pseudo_dir, output_dir, "unlabel", num_labelled_images, num_unlabelled_images)
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    # Check if output directory is empty
+    if os.path.exists(output_dir) and os.listdir(output_dir):
+        raise ValueError(f"Output directory '{output_dir}' is not empty! \n Please delete all files in '{output_dir}' before running this script.")
 
-print(f"Copied {num_labelled_images} labelled and {num_unlabelled_images} pseudo-labelled files to {output_dir}.")
-# ---------------------------
+
+
+    # Function to copy files with naming convention
+    def copy_files(source_dir, dest_dir, prefix, start_index, num_files):
+        for i in range(num_files):
+            image_src = os.path.join(source_dir, f"image_{prefix}{i:03d}.npy")
+            label_src = os.path.join(source_dir, f"label_{prefix}{i:03d}.npy")
+
+            image_dest = os.path.join(dest_dir, f"image_pseudo{start_index + i:03d}.npy")
+            label_dest = os.path.join(dest_dir, f"label_pseudo{start_index + i:03d}.npy")
+
+            if os.path.exists(image_src) and os.path.exists(label_src):
+                shutil.copy(image_src, image_dest)
+                shutil.copy(label_src, label_dest)
+            else:
+                print(f"Warning: File {image_src} or {label_src} does not exist and will be skipped.")
+
+    # Copy labelled images
+    copy_files(labelled_dir, output_dir, "train", 0, num_labelled_images)
+
+    # Copy pseudo-labelled images
+    copy_files(pseudo_dir, output_dir, "unlabel", num_labelled_images, num_unlabelled_images)
+
+    print(f"Copied {num_labelled_images} labelled and {num_unlabelled_images} pseudo-labelled files to {output_dir}.")
 # End of re-processing
 
 
@@ -64,9 +70,7 @@ print(f"Copied {num_labelled_images} labelled and {num_unlabelled_images} pseudo
 
 
 # Now do train logic:
-
 import random
-
 import tensorflow as tf
 
 
@@ -240,12 +244,17 @@ def train_step(model, weights, optimizer, x, y):
     optimizer.apply_gradients(zip(gradients, weights))
     return loss
 
-# optimisation configuration
-learning_rate = 7e-5  # Initial learning rate
-total_iter = 500
-freq_print = 1  # in iteration
+# Calculate number of training images
+image_files = sorted([f for f in os.listdir(output_dir) if f.startswith("image_pseudo") and f.endswith(".npy")])
+num_images = len(image_files)
+print('Number of training images: ', num_images)
+
+# Model parameters
+learning_rate = 2e-7  # Initial learning rate
+total_iter = 500  # Total number of iterations
+freq_print = 1  # How often to print
 freq_save = 2 # How often to save the model
-n = 200  # 200 training image-label pairs
+n = num_images  # Number of training image-label pairs
 size_minibatch = 4
 
 num_minibatch = int(n/size_minibatch)  # how many minibatches in each epoch
