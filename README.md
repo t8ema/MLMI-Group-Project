@@ -6,7 +6,7 @@
 
 # **Running order:**
 <br />
-data.py -> train.py  -> semi-supervised_labeller.py -> semi_supervised_train.py <br />
+data.py -> train.py  -> labeller.py/ensemble_labeller.py -> train_on_unlabelled.py <br />
 <br />
 (See information below for more info on each script) <br />
 <br />
@@ -20,11 +20,11 @@ Processes the data into the expected format for train.py. Resamples into a consi
 <br />
 
 # **train.py:**
-Trains the model (fully supervised, i.e. on the data that already has labels) and saves trained models in the saved_models folder. These models can be loaded with the model_loader script (to view results for a single image). Tests the model on test dataset, and stops training early if there is no improvement in the dice
+Trains the model (fully supervised, i.e. on the data that already has labels) and saves trained models in the saved_models folder. These models can be loaded with the model_loader script (to view results for a single image). Tests the model on the specified test dataset, and stops training early if there is no improvement in the dice (patience parameter)
 <br />
 <br />
 
-# **model_validator.py:**
+# **validator.py:**
 Allows models to be validated by calculating an average dice value over the validation set
 <br />
 <br />
@@ -39,7 +39,7 @@ Allows you to pseudo-label data using mutiple specified saved models. This allow
 <br />
 <br />
 
-# **semi-supervised_train.py:**
+# **train_on_unlabelled.py:**
 Allows you to train on a combination of labelled and unlabelled data. You can select the number of labelled and unlabelled images to use. You can also choose to use only unlabelled images. NOTE: This script automatically re-organises the data into a new folder for training. You can turn this off if you've already done it, but you will need to keep this feature on if yiu haven't run this code before
 <br />
 <br />
