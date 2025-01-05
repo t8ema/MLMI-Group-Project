@@ -1,3 +1,8 @@
+# Calculates average dice of selected model over test dataset
+# This version is batched, so runs much more quickly
+
+
+
 import os
 import random
 
@@ -9,7 +14,7 @@ from matplotlib.widgets import Slider
 
 
 
-model_save_path = './MLMI-Group-Project/cw2/saved_models/residual_unet_step_174.tf' # Path to the model you want to load
+model_save_path = './MLMI-Group-Project/cw2/saved_models/GOOD_unet_step_476.tf' # Path to the model you want to load
 
 path_to_val_folder = './MLMI-Group-Project/cw2/val' # Path to validation folder
 # images and labels have names image_val000.npy up to image_val099.npy, label_val000.npy to label_val099.npy
@@ -61,8 +66,41 @@ if __name__ == "__main__":
     image_files = sorted([f for f in os.listdir(path_to_val_folder) if f.startswith("image_val") and f.endswith(".npy")])
     num_images = len(image_files)
 
-    for i in range(num_images):  # Loop through all validation images dynamically
-        # Generate file paths
+    # Process images in minibatches
+    num_batches = num_images // size_minibatch
+    remaining_images = num_images % size_minibatch
+
+    for batch_idx in range(num_batches):
+        # Generate file paths for the current batch
+        batch_image_files = [
+            os.path.join(path_to_val_folder, f"image_val{batch_idx * size_minibatch + i:03d}.npy")
+            for i in range(size_minibatch)
+        ]
+        batch_truth_files = [
+            os.path.join(path_to_val_folder, f"label_val{batch_idx * size_minibatch + i:03d}.npy")
+            for i in range(size_minibatch)
+        ]
+
+        # Load and preprocess the images in the batch
+        batch_images = [np.expand_dims(np.load(f), axis=-1) for f in batch_image_files]
+        batch_images = np.stack(batch_images, axis=0)  # Stack along the batch dimension
+        batch_input_tensor = tf.convert_to_tensor(batch_images, dtype=tf.float32)
+
+        # Make predictions
+        batch_pred = loaded_model(batch_input_tensor).numpy()
+
+        if binarize_mask:
+            batch_pred = (batch_pred > binary_threshold).astype(np.uint8)
+
+        # Load ground truth masks and calculate Dice coefficients for the batch
+        batch_truth_masks = [np.load(f) for f in batch_truth_files]
+        for pred, truth_mask in zip(batch_pred, batch_truth_masks):
+            dice = calculate_dice_coefficient(pred[..., 0], truth_mask)
+            dice_scores.append(dice)
+
+    # Process any remaining images one by one
+    for i in range(num_batches * size_minibatch, num_images):
+        # Generate file paths for the current image
         image_file = os.path.join(path_to_val_folder, f"image_val{i:03d}.npy")
         truth_mask_file = os.path.join(path_to_val_folder, f"label_val{i:03d}.npy")
 
