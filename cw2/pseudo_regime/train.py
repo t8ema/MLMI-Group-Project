@@ -1,4 +1,7 @@
 # Train for semi-supervised experiment
+# This version has a patience parameter to stop training early if there is no improvement in the dice over the test set
+
+
 
 import os
 import random
@@ -17,7 +20,7 @@ os.makedirs(SAVE_PATH, exist_ok=True)  # Create SAVE_PATH directory if it doesn'
 
 
 # Set seeds for reproducibility
-SEED = 40  # Original is 40
+SEED = 42  # Original is 40
 os.environ["PYTHONHASHSEED"] = str(SEED)
 random.seed(SEED)
 np.random.seed(SEED)
@@ -285,10 +288,11 @@ print('Number of training images: ', num_images)
 
 # Model parameters
 learning_rate = 7e-5  # Initial learning rate
-total_iter = 500  # Total number of iterations
+total_iter = 1000  # Total number of iterations
 freq_print = 1  # How often to print
-freq_save = 2 # How often to save the model
+freq_test = 5 # How often to test (and save) the model
 n = num_images  # Number of training image-label pairs
+patience = 10  # Number of test intervals to wait for improvement
 size_minibatch = 6
 
 num_minibatch = int(n/size_minibatch)  # Number of minibatches in each epoch
@@ -314,9 +318,20 @@ class ResidualUNet(tf.Module):
     @tf.function
     def __call__(self, input):
         return residual_unet(input)  # Call the residual_unet function
-    
+
+
+
+# Invoke the model    
 residual_unet_model = ResidualUNet(var_list)
 
+
+
+# Set up highest dice parameter
+highest_dice = 0.0  # Keep track of the highest Dice score
+highest_dice_step = 0  # Step number where the highest Dice was achieved
+patience_counter = 0  # Counter for patience
+
+# Start training
 for step in range(total_iter):
 
     # Shuffle tye data for each new set of minibatches
@@ -337,13 +352,28 @@ for step in range(total_iter):
     if (step1 % freq_print) == 0:
         tf.print('Step', step1, 'loss:', loss_train)
     
-    # Save the model periodically
-    if step1 % freq_save == 0:
+    # Test and save the model periodically
+    if step1 % freq_test == 0:
         model_save_path = os.path.join(SAVE_PATH, f"residual_unet_step_{step1}.tf")
         tf.saved_model.save(residual_unet_model, model_save_path)
         print(f"Model saved to {model_save_path}")
         test_dice = test_model(model_save_path, path_to_test, minibatch_size= size_minibatch)
         print(f"Average dice over test data: {test_dice:.4f}")
+                
+        # Check if Dice score improved
+        if test_dice > highest_dice:
+            highest_dice = test_dice
+            highest_dice_step = step1
+            patience_counter = 0  # Reset patience counter
+            print(f"New highest Dice score: {highest_dice:.4f} at step {highest_dice_step}")
+        else:
+            patience_counter += 1  # Increment patience counter
+            print(f"No improvement in Dice score. Patience counter: {patience_counter}/{patience}")
+        
+        # Check if patience is exceeded
+        if patience_counter >= patience:
+            print(f"Early stopping triggered at step {step1}. Highest Dice: {highest_dice:.4f} at step {highest_dice_step}")
+            break
 
 # Save final model
 model_save_path = os.path.join(SAVE_PATH, f"residual_unet_step_finalstep.tf")
