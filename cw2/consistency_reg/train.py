@@ -2,6 +2,7 @@ import os
 import random
 import tensorflow as tf
 import numpy as np
+from tensorflow import keras
 from tensorflow.keras import layers, models, callbacks, regularizers
 from tensorflow.keras.optimizers.schedules import ExponentialDecay
 from tensorflow.keras import backend as K
@@ -73,211 +74,185 @@ def data_augmentation(images, labels=None, prob_flip=0.5, prob_rotate=0.5, noise
     
     return augmented_images, augmented_labels
 
+@tf.keras.utils.register_keras_serializable()
 def dice_coefficient(y_true, y_pred, smooth=1e-6):
     y_true_f = K.flatten(y_true)
     y_pred_f = K.flatten(y_pred)
     intersection = K.sum(y_true_f * y_pred_f)
     return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
 
-class ModelTrain(tf.keras.Model):
-    def __init__(self, input_shape=(None, None, None, 1), dropout_rate=0.3, lambda_consistency=1.0, optimizer=None, learning_rate=5e-5):
-        super(ModelTrain, self).__init__()
-        self.lambda_consistency = lambda_consistency
-        
-        # Define the optimizer if not passed
-        if optimizer is None:
-            self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
-        else:
-            self.optimizer = optimizer
-        
-        # Build the U-Net model
-        self.model = self.build_unet(input_shape, dropout_rate)
-        
-        # Compile the model
-        self.model.compile(optimizer=self.optimizer,
-                        loss=tf.keras.losses.BinaryCrossentropy(),
-                        metrics=['accuracy', dice_coefficient])
-
-    def build_unet(self, input_shape=(None, None, None, 1), dropout_rate=0.3):
-        inputs = layers.Input(shape=input_shape)
-        
-        # Encoder: Block 1
-        c1 = layers.Conv3D(32, (3, 3, 3), padding='same')(inputs)
-        c1 = layers.BatchNormalization()(c1)
-        c1 = layers.ReLU()(c1)
-        c1 = layers.Conv3D(32, (3, 3, 3), padding='same')(c1)
-        c1 = layers.BatchNormalization()(c1)
-        c1 = layers.ReLU()(c1)
-        c1 = layers.Dropout(dropout_rate)(c1)
-        p1 = layers.MaxPooling3D(pool_size=(1, 2, 2))(c1)
-        
-        # Encoder: Block 2
-        c2 = layers.Conv3D(64, (3, 3, 3), padding='same')(p1)
-        c2 = layers.BatchNormalization()(c2)
-        c2 = layers.ReLU()(c2)
-        c2 = layers.Conv3D(64, (3, 3, 3), padding='same')(c2)
-        c2 = layers.BatchNormalization()(c2)
-        c2 = layers.ReLU()(c2)
-        c2 = layers.Dropout(dropout_rate)(c2)
-        p2 = layers.MaxPooling3D(pool_size=(1, 2, 2))(c2)
-        
-        # Encoder: Block 3
-        c3 = layers.Conv3D(128, (3, 3, 3), padding='same')(p2)
-        c3 = layers.BatchNormalization()(c3)
-        c3 = layers.ReLU()(c3)
-        c3 = layers.Conv3D(128, (3, 3, 3), padding='same')(c3)
-        c3 = layers.BatchNormalization()(c3)
-        c3 = layers.ReLU()(c3)
-        c3 = layers.Dropout(dropout_rate)(c3)
-        p3 = layers.MaxPooling3D(pool_size=(1, 2, 2))(c3)
-        
-        # Bottleneck (Bridge) Block
-        c4 = layers.Conv3D(256, (3, 3, 3), padding='same')(p3)
-        c4 = layers.BatchNormalization()(c4)
-        c4 = layers.ReLU()(c4)
-        c4 = layers.Conv3D(256, (3, 3, 3), padding='same')(c4)
-        c4 = layers.BatchNormalization()(c4)
-        c4 = layers.ReLU()(c4)
-        c4 = layers.Dropout(dropout_rate)(c4)
-        
-        # Decoder: Block 1
-        u1 = layers.Conv3DTranspose(128, (3, 3, 3), strides=(1, 2, 2), padding='same')(c4)
-        u1 = layers.Concatenate()([u1, c3])
-        c5 = layers.Conv3D(128, (3, 3, 3), padding='same')(u1)
-        c5 = layers.BatchNormalization()(c5)
-        c5 = layers.ReLU()(c5)
-        c5 = layers.Conv3D(128, (3, 3, 3), padding='same')(c5)
-        c5 = layers.BatchNormalization()(c5)
-        c5 = layers.ReLU()(c5)
-        c5 = layers.Dropout(dropout_rate)(c5)
-        
-        # Decoder: Block 2
-        u2 = layers.Conv3DTranspose(64, (3, 3, 3), strides=(1, 2, 2), padding='same')(c5)
-        u2 = layers.Concatenate()([u2, c2])
-        c6 = layers.Conv3D(64, (3, 3, 3), padding='same')(u2)
-        c6 = layers.BatchNormalization()(c6)
-        c6 = layers.ReLU()(c6)
-        c6 = layers.Conv3D(64, (3, 3, 3), padding='same')(c6)
-        c6 = layers.BatchNormalization()(c6)
-        c6 = layers.ReLU()(c6)
-        c6 = layers.Dropout(dropout_rate)(c6)
-        
-        # Decoder: Block 3
-        u3 = layers.Conv3DTranspose(32, (3, 3, 3), strides=(1, 2, 2), padding='same')(c6)
-        u3 = layers.Concatenate()([u3, c1])
-        c7 = layers.Conv3D(32, (3, 3, 3), padding='same')(u3)
-        c7 = layers.BatchNormalization()(c7)
-        c7 = layers.ReLU()(c7)
-        c7 = layers.Conv3D(32, (3, 3, 3), padding='same')(c7)
-        c7 = layers.BatchNormalization()(c7)
-        c7 = layers.ReLU()(c7)
-        c7 = layers.Dropout(dropout_rate)(c7)
-        
-        # Output layer
-        outputs = layers.Conv3D(1, (1, 1, 1), activation='sigmoid')(c7)
-        
-        # Build and return the model
-        model = models.Model(inputs, outputs)
-        return model
-
-    def call(self, inputs, training=False):
-        return self.model(inputs, training=training)
-
-    # Test function for Dice score evaluation
-    def evaluate_model(self, test_data, threshold=0.5):
-        predictions = self.predict(test_data[0])
-        dice_scores = []
-        for pred, truth in zip(predictions, test_data[1]):
-            pred_binary = (pred > threshold).astype(np.uint8)
-            intersection = np.sum(pred_binary * truth)
-            union = np.sum(pred_binary) + np.sum(truth)
-            dice_score = 2 * intersection / union if union > 0 else 1.0
-            dice_scores.append(dice_score)
-        return np.mean(dice_scores)
+def build_unet(input_shape=(None, None, None, 1), dropout_rate=0.3):
+    inputs = layers.Input(shape=input_shape)
     
-    def train_model(self, train_data, unlabelled_images, val_data, batch_size, epochs, patience, lambda_consistency=10.0):
-        train_images, train_labels = train_data
-        val_images, val_labels = val_data
-        
-        # Initialize variables for early stopping
-        best_weights = None
-        best_val_loss = np.inf
-        patience_counter = 0
-        
-        # Compile the model
-        self.model.compile(optimizer=self.optimizer,
-                loss=tf.keras.losses.BinaryCrossentropy(),
-                metrics=['accuracy', dice_coefficient])
-        
-        for epoch in range(epochs):
-            # Shuffle training data
-            train_indices = np.arange(len(train_images))
-            np.random.shuffle(train_indices)
-            train_images = train_images[train_indices]
-            train_labels = train_labels[train_indices]
+    # Encoder: Block 1
+    c1 = layers.Conv3D(32, (3, 3, 3), padding='same')(inputs)
+    c1 = layers.BatchNormalization()(c1)
+    c1 = layers.ReLU()(c1)
+    c1 = layers.Conv3D(32, (3, 3, 3), padding='same')(c1)
+    c1 = layers.BatchNormalization()(c1)
+    c1 = layers.ReLU()(c1)
+    c1 = layers.Dropout(dropout_rate)(c1)
+    p1 = layers.MaxPooling3D(pool_size=(1, 2, 2))(c1)
+    
+    # Encoder: Block 2
+    c2 = layers.Conv3D(64, (3, 3, 3), padding='same')(p1)
+    c2 = layers.BatchNormalization()(c2)
+    c2 = layers.ReLU()(c2)
+    c2 = layers.Conv3D(64, (3, 3, 3), padding='same')(c2)
+    c2 = layers.BatchNormalization()(c2)
+    c2 = layers.ReLU()(c2)
+    c2 = layers.Dropout(dropout_rate)(c2)
+    p2 = layers.MaxPooling3D(pool_size=(1, 2, 2))(c2)
+    
+    # Encoder: Block 3
+    c3 = layers.Conv3D(128, (3, 3, 3), padding='same')(p2)
+    c3 = layers.BatchNormalization()(c3)
+    c3 = layers.ReLU()(c3)
+    c3 = layers.Conv3D(128, (3, 3, 3), padding='same')(c3)
+    c3 = layers.BatchNormalization()(c3)
+    c3 = layers.ReLU()(c3)
+    c3 = layers.Dropout(dropout_rate)(c3)
+    p3 = layers.MaxPooling3D(pool_size=(1, 2, 2))(c3)
+    
+    # Bottleneck (Bridge) Block
+    c4 = layers.Conv3D(256, (3, 3, 3), padding='same')(p3)
+    c4 = layers.BatchNormalization()(c4)
+    c4 = layers.ReLU()(c4)
+    c4 = layers.Conv3D(256, (3, 3, 3), padding='same')(c4)
+    c4 = layers.BatchNormalization()(c4)
+    c4 = layers.ReLU()(c4)
+    c4 = layers.Dropout(dropout_rate)(c4)
+    
+    # Decoder: Block 1
+    u1 = layers.Conv3DTranspose(128, (3, 3, 3), strides=(1, 2, 2), padding='same')(c4)
+    u1 = layers.concatenate([u1, c3], axis=-1)
+    c5 = layers.Conv3D(128, (3, 3, 3), padding='same')(u1)
+    c5 = layers.BatchNormalization()(c5)
+    c5 = layers.ReLU()(c5)
+    c5 = layers.Conv3D(128, (3, 3, 3), padding='same')(c5)
+    c5 = layers.BatchNormalization()(c5)
+    c5 = layers.ReLU()(c5)
+    c5 = layers.Dropout(dropout_rate)(c5)
+    
+    # Decoder: Block 2
+    u2 = layers.Conv3DTranspose(64, (3, 3, 3), strides=(1, 2, 2), padding='same')(c5)
+    u2 = layers.concatenate([u2, c2], axis=-1)
+    c6 = layers.Conv3D(64, (3, 3, 3), padding='same')(u2)
+    c6 = layers.BatchNormalization()(c6)
+    c6 = layers.ReLU()(c6)
+    c6 = layers.Conv3D(64, (3, 3, 3), padding='same')(c6)
+    c6 = layers.BatchNormalization()(c6)
+    c6 = layers.ReLU()(c6)
+    c6 = layers.Dropout(dropout_rate)(c6)
+    
+    # Decoder: Block 3
+    u3 = layers.Conv3DTranspose(32, (3, 3, 3), strides=(1, 2, 2), padding='same')(c6)
+    u3 = layers.concatenate([u3, c1], axis=-1)
+    c7 = layers.Conv3D(32, (3, 3, 3), padding='same')(u3)
+    c7 = layers.BatchNormalization()(c7)
+    c7 = layers.ReLU()(c7)
+    c7 = layers.Conv3D(32, (3, 3, 3), padding='same')(c7)
+    c7 = layers.BatchNormalization()(c7)
+    c7 = layers.ReLU()(c7)
+    c7 = layers.Dropout(dropout_rate)(c7)
+    
+    # Output layer
+    outputs = layers.Conv3D(1, (1, 1, 1), activation='sigmoid')(c7)
+    
+    # Build and return the model
+    model = models.Model(inputs, outputs)
+    return model
 
-            # Shuffle unlabelled data
-            unlabelled_indices = np.arange(len(unlabelled_images))
-            np.random.shuffle(unlabelled_indices)
-            unlabelled_images = unlabelled_images[unlabelled_indices]
+# Test function for Dice score evaluation
+def evaluate_model(model, test_data, threshold=0.5):
+    predictions = model.predict(test_data[0])
+    dice_scores = []
+    for pred, truth in zip(predictions, test_data[1]):
+        pred_binary = (pred > threshold).astype(np.uint8)
+        intersection = np.sum(pred_binary * truth)
+        union = np.sum(pred_binary) + np.sum(truth)
+        dice_score = 2 * intersection / union if union > 0 else 1.0
+        dice_scores.append(dice_score)
+    return np.mean(dice_scores)
 
-            num_batches = len(train_images) // batch_size
-            print(f'Number of batches: {num_batches}')
+def train_model(model, train_data, unlabelled_images, val_data, batch_size, epochs, patience, lambda_consistency=10.0):
+    train_images, train_labels = train_data
+    val_images, val_labels = val_data
+    
+    # Initialize variables for early stopping
+    best_weights = None
+    best_val_loss = np.inf
+    patience_counter = 0
+    
+    for epoch in range(epochs):
+        # Shuffle training data
+        train_indices = np.arange(len(train_images))
+        np.random.shuffle(train_indices)
+        train_images = train_images[train_indices]
+        train_labels = train_labels[train_indices]
 
-            for batch_idx in range(num_batches):
-                # Labeled batch
-                batch_images = train_images[batch_idx * batch_size: (batch_idx + 1) * batch_size]
-                batch_labels = train_labels[batch_idx * batch_size: (batch_idx + 1) * batch_size]
+        # Shuffle unlabelled data
+        unlabelled_indices = np.arange(len(unlabelled_images))
+        np.random.shuffle(unlabelled_indices)
+        unlabelled_images = unlabelled_images[unlabelled_indices]
 
-                # Unlabelled batch
-                unlabelled_start = batch_idx * batch_size % len(unlabelled_images)
-                unlabelled_end = unlabelled_start + batch_size
-                batch_unlabelled = unlabelled_images[unlabelled_start:unlabelled_end]
+        num_batches = len(train_images) // batch_size
+        print(f'Number of batches: {num_batches}')
 
-                # Data augmentation
-                augmented_images, augmented_labels = data_augmentation(batch_images, batch_labels)
-                unlabelled_augmented_images, _ = data_augmentation(batch_unlabelled, None)
-                
-                with tf.GradientTape() as tape:
-                    # Model predictions
-                    y_pred = self(batch_images, training=True)
-                    augmented_y_pred = self(augmented_images, training=True)
-                    unlabelled_y_pred = self(batch_unlabelled, training=True)
-                    unlabelled_augmented_y_pred = self(unlabelled_augmented_images, training=True)
-                    
-                    supervised_loss = tf.keras.losses.BinaryCrossentropy()(batch_labels, y_pred)
-                    consistency_loss = tf.reduce_mean(tf.square(unlabelled_y_pred - unlabelled_augmented_y_pred))
-                    # Compute the total loss
-                    total_loss = supervised_loss + lambda_consistency * consistency_loss
+        for batch_idx in range(num_batches):
+            # Labeled batch
+            batch_images = train_images[batch_idx * batch_size: (batch_idx + 1) * batch_size]
+            batch_labels = train_labels[batch_idx * batch_size: (batch_idx + 1) * batch_size]
 
-                # Gradient update
-                gradients = tape.gradient(total_loss, self.trainable_variables)
-                self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+            # Unlabelled batch
+            unlabelled_start = batch_idx * batch_size % len(unlabelled_images)
+            unlabelled_end = unlabelled_start + batch_size
+            batch_unlabelled = unlabelled_images[unlabelled_start:unlabelled_end]
 
-                print(f'Batch {batch_idx} complete. Supervised Loss: {supervised_loss}. Consistency Loss: {consistency_loss}. Total Loss: {total_loss}')
+            # Data augmentation
+            augmented_images, augmented_labels = data_augmentation(batch_images, batch_labels)
+            unlabelled_augmented_images, _ = data_augmentation(batch_unlabelled, None)
             
-            # Validation evaluation
-            val_result = self.model.evaluate(val_images, val_labels, verbose=0, return_dict=True)
-            print(f"Epoch {epoch + 1}/{epochs} - Val Result: {val_result}")
+            with tf.GradientTape() as tape:
+                # Model predictions
+                y_pred = model(batch_images, training=True)
+                augmented_y_pred = model(augmented_images, training=True)
+                unlabelled_y_pred = model(batch_unlabelled, training=True)
+                unlabelled_augmented_y_pred = model(unlabelled_augmented_images, training=True)
+                
+                supervised_loss = tf.keras.losses.BinaryCrossentropy()(batch_labels, y_pred)
+                consistency_loss = tf.reduce_mean(tf.square(unlabelled_y_pred - unlabelled_augmented_y_pred))
+                # Compute the total loss
+                total_loss = supervised_loss + lambda_consistency * consistency_loss
 
-            # Store the best weights
-            if val_result['loss'] < best_val_loss:
-                best_weights = self.model.get_weights()
-                best_val_loss = val_result['loss']
-                patience_counter = 0  # Reset patience counter if there's improvement
-            else:
-                patience_counter += 1
+            # Gradient update
+            gradients = tape.gradient(total_loss, model.trainable_variables)
+            model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
-            # Early stopping logic
-            if patience_counter >= patience:
-                print("Early stopping triggered.")
-                break
+            print(f'Batch {batch_idx} complete. Supervised Loss: {supervised_loss}. Consistency Loss: {consistency_loss}. Total Loss: {total_loss}')
+        
+        # Validation evaluation
+        val_result = model.evaluate(val_images, val_labels, verbose=0, return_dict=True)
+        print(f"Epoch {epoch + 1}/{epochs} - Val Result: {val_result}")
 
-        # Restore best weights if early stopping was triggered
-        if best_weights is not None:
-            self.model.set_weights(best_weights)
+        # Store the best weights
+        if val_result['loss'] < best_val_loss:
+            best_weights = model.get_weights()
+            best_val_loss = val_result['loss']
+            patience_counter = 0  # Reset patience counter if there's improvement
+        else:
+            patience_counter += 1
 
-        return self
+        # Early stopping logic
+        if patience_counter >= patience:
+            print("Early stopping triggered.")
+            break
+
+    # Restore best weights if early stopping was triggered
+    if best_weights is not None:
+        model.set_weights(best_weights)
+
+    return model
 
 if __name__ == "__main__":
 
@@ -288,6 +263,7 @@ if __name__ == "__main__":
     INPUT_SHAPE = (6, 48, 48, 1)  # Adjust if needed
     INITIAL_LEARNING_RATE = 5e-5
     LAMBDA_CONSISTENCY = 1.0
+    DROPOUT_RATE = 0.3
 
     # Load and split data
     data_reader = DataReader(PATH_TO_DATA)
@@ -321,29 +297,24 @@ if __name__ == "__main__":
 
     # Define optimizer with learning rate scheduler
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
-
     tf.keras.backend.clear_session()  # Clear previous sessions
-
-    model = ModelTrain(
-        input_shape=INPUT_SHAPE,
-        dropout_rate=0.3,
-        lambda_consistency=LAMBDA_CONSISTENCY,
-        optimizer=optimizer  # Pass optimizer with LR scheduler
-    )
+    model = build_unet(INPUT_SHAPE, DROPOUT_RATE)
+    model.compile(optimizer=optimizer, loss=tf.keras.losses.BinaryCrossentropy(),
+                  metrics=['accuracy', dice_coefficient])
 
     # Train model
-    model.train_model(
-        train_data=(train_images, train_labels),
-        unlabelled_images=unlabelled_images,
-        val_data=(val_images, val_labels),
-        batch_size=BATCH_SIZE,
-        epochs=EPOCHS,
-        patience=PATIENCE,
-        lambda_consistency=LAMBDA_CONSISTENCY
+    train_model(model,
+                train_data=(train_images,train_labels),
+                unlabelled_images=unlabelled_images,
+                val_data=(val_images, val_labels),
+                batch_size=BATCH_SIZE,
+                epochs=EPOCHS,
+                patience=PATIENCE,
+                lambda_consistency=LAMBDA_CONSISTENCY
     )
 
     # Evaluate and save model
-    test_dice = model.evaluate_model((val_images, val_labels))
+    test_dice = evaluate_model(model, (val_images, val_labels))
     print(f"Validation Dice Score: {test_dice:.4f}")
     
     # Save the trained model
