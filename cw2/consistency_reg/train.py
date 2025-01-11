@@ -4,6 +4,7 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras import layers, models, callbacks, regularizers
 from tensorflow.keras.optimizers.schedules import ExponentialDecay
+from tensorflow.keras import backend as K
 
 # Set paths and configurations
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -72,18 +73,11 @@ def data_augmentation(images, labels=None, prob_flip=0.5, prob_rotate=0.5, noise
     
     return augmented_images, augmented_labels
 
-# Combined loss function (Supervised + Consistency Loss)
-def combined_loss(y_true, y_pred, augmented_y_pred, lambda_consistency=1.0):
-    # Supervised loss (binary cross-entropy)
-    supervised_loss = tf.keras.losses.BinaryCrossentropy()(y_true, y_pred)
-    
-    # Consistency loss
-    consistency_loss_val = tf.reduce_mean(tf.square(y_pred - augmented_y_pred))
-    
-    # Combined loss
-    total_loss = supervised_loss + lambda_consistency * consistency_loss_val
-    
-    return total_loss
+def dice_coefficient(y_true, y_pred, smooth=1e-6):
+    y_true_f = K.flatten(y_true)
+    y_pred_f = K.flatten(y_pred)
+    intersection = K.sum(y_true_f * y_pred_f)
+    return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
 
 class ModelTrain(tf.keras.Model):
     def __init__(self, input_shape=(None, None, None, 1), dropout_rate=0.3, lambda_consistency=1.0, optimizer=None, learning_rate=5e-5):
@@ -102,68 +96,82 @@ class ModelTrain(tf.keras.Model):
         # Compile the model
         self.model.compile(optimizer=self.optimizer,
                         loss=tf.keras.losses.BinaryCrossentropy(),
-                        metrics=['accuracy'])
+                        metrics=['accuracy', dice_coefficient])
 
     def build_unet(self, input_shape=(None, None, None, 1), dropout_rate=0.3):
         inputs = layers.Input(shape=input_shape)
         
         # Encoder: Block 1
-        c1 = layers.Conv3D(32, (3, 3, 3), padding='same')(inputs)  # Changed padding to 'same'
+        c1 = layers.Conv3D(32, (3, 3, 3), padding='same')(inputs)
+        c1 = layers.BatchNormalization()(c1)
         c1 = layers.ReLU()(c1)
-        c1 = layers.Conv3D(32, (3, 3, 3), padding='same')(c1)  # Changed padding to 'same'
+        c1 = layers.Conv3D(32, (3, 3, 3), padding='same')(c1)
+        c1 = layers.BatchNormalization()(c1)
         c1 = layers.ReLU()(c1)
-        c1 = layers.Dropout(dropout_rate)(c1)  # Add dropout
+        c1 = layers.Dropout(dropout_rate)(c1)
         p1 = layers.MaxPooling3D(pool_size=(1, 2, 2))(c1)
         
         # Encoder: Block 2
-        c2 = layers.Conv3D(64, (3, 3, 3), padding='same')(p1)  # Changed padding to 'same'
+        c2 = layers.Conv3D(64, (3, 3, 3), padding='same')(p1)
+        c2 = layers.BatchNormalization()(c2)
         c2 = layers.ReLU()(c2)
-        c2 = layers.Conv3D(64, (3, 3, 3), padding='same')(c2)  # Changed padding to 'same'
+        c2 = layers.Conv3D(64, (3, 3, 3), padding='same')(c2)
+        c2 = layers.BatchNormalization()(c2)
         c2 = layers.ReLU()(c2)
-        c2 = layers.Dropout(dropout_rate)(c2)  # Add dropout
+        c2 = layers.Dropout(dropout_rate)(c2)
         p2 = layers.MaxPooling3D(pool_size=(1, 2, 2))(c2)
         
         # Encoder: Block 3
-        c3 = layers.Conv3D(128, (3, 3, 3), padding='same')(p2)  # Changed padding to 'same'
+        c3 = layers.Conv3D(128, (3, 3, 3), padding='same')(p2)
+        c3 = layers.BatchNormalization()(c3)
         c3 = layers.ReLU()(c3)
-        c3 = layers.Conv3D(128, (3, 3, 3), padding='same')(c3)  # Changed padding to 'same'
+        c3 = layers.Conv3D(128, (3, 3, 3), padding='same')(c3)
+        c3 = layers.BatchNormalization()(c3)
         c3 = layers.ReLU()(c3)
-        c3 = layers.Dropout(dropout_rate)(c3)  # Add dropout
+        c3 = layers.Dropout(dropout_rate)(c3)
         p3 = layers.MaxPooling3D(pool_size=(1, 2, 2))(c3)
         
         # Bottleneck (Bridge) Block
-        c4 = layers.Conv3D(256, (3, 3, 3), padding='same')(p3)  # Changed padding to 'same'
+        c4 = layers.Conv3D(256, (3, 3, 3), padding='same')(p3)
+        c4 = layers.BatchNormalization()(c4)
         c4 = layers.ReLU()(c4)
-        c4 = layers.Conv3D(256, (3, 3, 3), padding='same')(c4)  # Changed padding to 'same'
+        c4 = layers.Conv3D(256, (3, 3, 3), padding='same')(c4)
+        c4 = layers.BatchNormalization()(c4)
         c4 = layers.ReLU()(c4)
-        c4 = layers.Dropout(dropout_rate)(c4)  # Add dropout
+        c4 = layers.Dropout(dropout_rate)(c4)
         
         # Decoder: Block 1
         u1 = layers.Conv3DTranspose(128, (3, 3, 3), strides=(1, 2, 2), padding='same')(c4)
         u1 = layers.Concatenate()([u1, c3])
         c5 = layers.Conv3D(128, (3, 3, 3), padding='same')(u1)
+        c5 = layers.BatchNormalization()(c5)
         c5 = layers.ReLU()(c5)
         c5 = layers.Conv3D(128, (3, 3, 3), padding='same')(c5)
+        c5 = layers.BatchNormalization()(c5)
         c5 = layers.ReLU()(c5)
-        c5 = layers.Dropout(dropout_rate)(c5)  # Add dropout
+        c5 = layers.Dropout(dropout_rate)(c5)
         
         # Decoder: Block 2
         u2 = layers.Conv3DTranspose(64, (3, 3, 3), strides=(1, 2, 2), padding='same')(c5)
         u2 = layers.Concatenate()([u2, c2])
         c6 = layers.Conv3D(64, (3, 3, 3), padding='same')(u2)
+        c6 = layers.BatchNormalization()(c6)
         c6 = layers.ReLU()(c6)
         c6 = layers.Conv3D(64, (3, 3, 3), padding='same')(c6)
+        c6 = layers.BatchNormalization()(c6)
         c6 = layers.ReLU()(c6)
-        c6 = layers.Dropout(dropout_rate)(c6)  # Add dropout
+        c6 = layers.Dropout(dropout_rate)(c6)
         
         # Decoder: Block 3
         u3 = layers.Conv3DTranspose(32, (3, 3, 3), strides=(1, 2, 2), padding='same')(c6)
         u3 = layers.Concatenate()([u3, c1])
         c7 = layers.Conv3D(32, (3, 3, 3), padding='same')(u3)
+        c7 = layers.BatchNormalization()(c7)
         c7 = layers.ReLU()(c7)
         c7 = layers.Conv3D(32, (3, 3, 3), padding='same')(c7)
+        c7 = layers.BatchNormalization()(c7)
         c7 = layers.ReLU()(c7)
-        c7 = layers.Dropout(dropout_rate)(c7)  # Add dropout
+        c7 = layers.Dropout(dropout_rate)(c7)
         
         # Output layer
         outputs = layers.Conv3D(1, (1, 1, 1), activation='sigmoid')(c7)
@@ -174,13 +182,6 @@ class ModelTrain(tf.keras.Model):
 
     def call(self, inputs, training=False):
         return self.model(inputs, training=training)
-
-    def compute_loss(self, labels, predictions):
-        # Compute supervised loss and consistency loss
-        supervised_loss = tf.keras.losses.BinaryCrossentropy()(labels, predictions)
-        consistency_loss = tf.reduce_mean(tf.square(predictions - labels))  # Example of consistency loss
-        total_loss = supervised_loss + self.lambda_consistency * consistency_loss
-        return total_loss
 
     # Test function for Dice score evaluation
     def evaluate_model(self, test_data, threshold=0.5):
@@ -206,7 +207,7 @@ class ModelTrain(tf.keras.Model):
         # Compile the model
         self.model.compile(optimizer=self.optimizer,
                 loss=tf.keras.losses.BinaryCrossentropy(),
-                metrics=['accuracy'])
+                metrics=['accuracy', dice_coefficient])
         
         for epoch in range(epochs):
             # Shuffle training data
@@ -244,7 +245,7 @@ class ModelTrain(tf.keras.Model):
                     unlabelled_y_pred = self(batch_unlabelled, training=True)
                     unlabelled_augmented_y_pred = self(unlabelled_augmented_images, training=True)
                     
-                    supervised_loss = self.compute_loss(batch_labels, y_pred)
+                    supervised_loss = tf.keras.losses.BinaryCrossentropy()(batch_labels, y_pred)
                     consistency_loss = tf.reduce_mean(tf.square(unlabelled_y_pred - unlabelled_augmented_y_pred))
                     # Compute the total loss
                     total_loss = supervised_loss + lambda_consistency * consistency_loss
