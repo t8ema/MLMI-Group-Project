@@ -1,3 +1,5 @@
+# Validate one model after defining its save path
+
 import os
 import random
 
@@ -9,7 +11,7 @@ from matplotlib.widgets import Slider
 
 
 
-model_save_path = './MLMI-Group-Project/cw2/saved_models/56_140.tf' # Path to the model you want to load
+model_save_path = './MLMI-Group-Project/cw2/saved_models/50_340.tf' # Path to the model you want to load
 
 path_to_val_folder = './MLMI-Group-Project/cw2/val' # Path to validation folder
 # images and labels have names image_val000.npy up to image_val099.npy, label_val000.npy to label_val099.npy
@@ -124,4 +126,3 @@ if __name__ == "__main__":
     # Calculate the average Dice coefficient
     average_dice = np.mean(dice_scores)
     print(f"Average Dice coefficient over the validation set: {average_dice:.4f}")
-  
