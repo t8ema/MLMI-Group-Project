@@ -6,9 +6,9 @@ import numpy as np
 
 # Paths to the models
 model_paths = [
-        './MLMI-Group-Project/cw2/saved_models/40_220.tf',
-        './MLMI-Group-Project/cw2/saved_models/42_210.tf',
-        './MLMI-Group-Project/cw2/saved_models/45_285.tf',  # Add more model paths here
+        './MLMI-Group-Project/cw2/saved_models/46_220.tf',
+        #'./MLMI-Group-Project/cw2/saved_models/47_210.tf',
+        #'./MLMI-Group-Project/cw2/saved_models/48_230.tf',  # Add more model paths here
     ]
 
 # Path to folder with unlabelled data
@@ -93,8 +93,8 @@ output_dir = "MLMI-Group-Project/cw2/SSL-pseudo/pseudo_train_data"
 # ---------------------------
 def re_process_data():
     # Parameters
-    num_labelled_images = 12  # Number of labelled images to use
-    num_unlabelled_images = 4  # Number of pseudo-labelled images to use
+    num_labelled_images = 0  # Number of labelled images to use
+    num_unlabelled_images = 50  # Number of pseudo-labelled images to use
 
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
@@ -166,7 +166,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]="0"
 SAVE_PATH = './MLMI-Group-Project/cw2/saved_models'
 
 # Set seeds for reproducibility
-SEED = 56
+SEED = 50
 os.environ["PYTHONHASHSEED"] = str(SEED)
 random.seed(SEED)
 np.random.seed(SEED)
@@ -449,11 +449,10 @@ print('Number of training images: ', num_images)
 
 # Model parameters
 learning_rate = 7e-5  # Initial learning rate
-total_iter = 1000  # Total number of iterations
+total_iter = 350  # Total number of iterations
 freq_print = 1  # How often to print
 freq_test = 5 # How often to test (and save) the model
 n = num_images  # Number of training image-label pairs
-patience = 16  # Number of test intervals to wait for improvement
 size_minibatch = 6
 
 num_minibatch = int(n/size_minibatch)  # How many minibatches in each epoch
@@ -487,7 +486,6 @@ residual_unet_model = ResidualUNet(var_list)
 # Set up highest dice parameter
 highest_dice = 0.0  # Keep track of the highest Dice score
 highest_dice_step = 0  # Step number where the highest Dice was achieved
-patience_counter = 0  # Counter for patience
 
 # Start training loop
 for step in range(total_iter):
@@ -521,7 +519,6 @@ for step in range(total_iter):
         if test_dice > highest_dice:
             highest_dice = test_dice
             highest_dice_step = step1
-            patience_counter = 0  # Reset patience counter
             print(f"New highest Dice score: {highest_dice:.4f} at step {highest_dice_step}")
             
             # Delete old best model (if it exists)
@@ -532,12 +529,6 @@ for step in range(total_iter):
             tf.saved_model.save(residual_unet_model, model_save_path)
             print(f"Model saved to {model_save_path}")
         else:
-            patience_counter += 1  # Increment patience counter
-            print(f"No improvement in Dice score. Patience counter: {patience_counter}/{patience}")
-        
-        # Check if patience is exceeded
-        if patience_counter >= patience:
-            print(f"Early stopping triggered at step {step1}. Highest Dice: {highest_dice:.4f} at step {highest_dice_step}")
-            break
+            print(f"No improvement in Dice score.")
 
 print('Training done.')
