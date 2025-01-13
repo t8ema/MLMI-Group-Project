@@ -7,7 +7,7 @@ from scipy.ndimage import zoom
 import random
 
 
-# Parameters
+# Data paths
 data_dir = "MLMI-Group-Project/cw2/data"  # Directory containing images and masks
 
 train_dir = "MLMI-Group-Project/cw2/train"  # Directory for processed outputs
@@ -16,14 +16,13 @@ test_dir = "MLMI-Group-Project/cw2/test"  # Directory for processed outputs
 unlabel_dir = "MLMI-Group-Project/cw2/unlabel"  # Directory for processed outputs
 
 
-
+# Data split
 num_train = 200  # Number of training images
 num_val = 139  # Number of validation images
 num_test = 50  # Number of test images
 num_unlabel = 200  # Number of images to process without labels
 
-
-
+# Parameters
 target_shape = (48, 48, 6)  # Shape to re-process images to (x, y, number of slices) - original = (128, 128, 32)
 slices_first = True  # Put the slice dimension first, so if you have e.g. target_shape 128,128,32, it will become 32,128,128
 roi_value = 6  # Value in the mask to extract as ROI
