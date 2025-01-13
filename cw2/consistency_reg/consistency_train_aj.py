@@ -1,44 +1,62 @@
 import os
-import random
 import tensorflow as tf
 import numpy as np
-from tensorflow.keras import layers, models, backend as K
-from tensorflow.keras.optimizers.schedules import ExponentialDecay
 import matplotlib.pyplot as plt
-from skimage.measure import label
+from tensorflow.keras import layers, models, backend as K
+from sklearn.metrics import roc_auc_score
 
-# Set paths and configurations
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-PATH_TO_DATA = '/Users/antonio/YEAR_4/ML/CW2/MLMI-Group-Project/cw2/train'
-SAVE_PATH = '/Users/antonio/YEAR_4/ML/CW2/MLMI-Group-Project/models'
+# Paths
+BASE_PATH = "/Users/antonio/YEAR_4/ML/CW2/MLMI-Group-Project/cw2"
+TRAIN_PATH = os.path.join(BASE_PATH, "train")
+VAL_PATH = os.path.join(BASE_PATH, "val")
+TEST_PATH = os.path.join(BASE_PATH, "test")
+UNLABEL_PATH = os.path.join(BASE_PATH, "unlabel")
+
+SAVE_PATH = os.path.join(BASE_PATH, "models")
 os.makedirs(SAVE_PATH, exist_ok=True)
-
-# Set seeds for reproducibility
-SEED = 42
-os.environ["PYTHONHASHSEED"] = str(SEED)
-random.seed(SEED)
-np.random.seed(SEED)
-tf.random.set_seed(SEED)
-os.environ["TF_DETERMINISTIC_OPS"] = "1"
 
 # Data Reader Class
 class DataReader:
     def __init__(self, folder):
         self.folder = folder
 
-    def load_data(self, indices, data_type="image"):
-        filenames = [f"{data_type}_train{i:03d}.npy" for i in indices]
-        data = []
-        for fn in filenames:
-            try:
-                arr = np.load(os.path.join(self.folder, fn)).astype(np.float32)
-                data.append(np.expand_dims(arr, axis=-1))
-            except FileNotFoundError:
-                print(f"File not found: {fn}")
+    def load_data(self, data_type="image"):
+        filenames = sorted(
+            [f for f in os.listdir(self.folder) if f.startswith(data_type) and f.endswith(".npy")]
+        )
+        data = [np.load(os.path.join(self.folder, fn)) for fn in filenames]
         data = np.stack(data)
-        if data_type == "image":
-            data /= 255.0
-        return data
+        if data_type.startswith("image"):
+            data /= 255.0  # Normalize images
+        return np.expand_dims(data, axis=-1)  # Add channel dimension
+
+
+# Initialize readers
+train_reader = DataReader(TRAIN_PATH)
+val_reader = DataReader(VAL_PATH)
+test_reader = DataReader(TEST_PATH)
+unlabel_reader = DataReader(UNLABEL_PATH)
+
+# Load datasets
+train_images = train_reader.load_data("image_train")
+train_labels = train_reader.load_data("label_train")
+val_images = val_reader.load_data("image_val")
+val_labels = val_reader.load_data("label_val")
+test_images = test_reader.load_data("image_test")
+test_labels = test_reader.load_data("label_test")
+unlabel_images = unlabel_reader.load_data("image_unlabel")
+
+# Check dataset shapes
+print(f"Train images: {train_images.shape}, Train labels: {train_labels.shape}")
+print(f"Validation images: {val_images.shape}, Validation labels: {val_labels.shape}")
+print(f"Test images: {test_images.shape}, Test labels: {test_labels.shape}")
+print(f"Unlabelled images: {unlabel_images.shape}")
+
+# Hyperparameters
+BATCH_SIZE = 4
+EPOCHS = 10
+DROPOUT_RATE = 0.4
+LAMBDA_CONSISTENCY = 1.0
 
 # Optimised Data Augmentation
 def data_augmentation(images, labels=None, prob_flip=0.5, prob_rotate=0.5, noise_stddev=0.01):
@@ -73,10 +91,11 @@ def data_augmentation(images, labels=None, prob_flip=0.5, prob_rotate=0.5, noise
 # Dice Coefficient Metric
 @tf.keras.utils.register_keras_serializable()
 def dice_coefficient(y_true, y_pred, smooth=1e-6):
-    y_true_f = K.flatten(y_true)
+    y_true_f = K.cast(K.flatten(y_true), dtype="float32")  # Cast to float32
     y_pred_f = K.flatten(y_pred)
     intersection = K.sum(y_true_f * y_pred_f)
     return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
+
 
 # Dice Loss
 def dice_loss(y_true, y_pred, smooth=1e-6):
@@ -160,77 +179,97 @@ def build_unet(input_shape=(None, None, None, 1), dropout_rate=0.3):
     model = models.Model(inputs, outputs)
     return model
 
-if __name__ == "__main__":
-    # Load data
-    data_reader = DataReader(PATH_TO_DATA)
-    indices = list(range(100))
-    train_indices, val_indices = indices[:80], indices[80:]
-    unlabelled_indices = indices[80:]  # Simulated unlabelled data for SSL
-    
-    train_images = data_reader.load_data(train_indices, "image")
-    train_labels = data_reader.load_data(train_indices, "label")
-    val_images = data_reader.load_data(val_indices, "image")
-    val_labels = data_reader.load_data(val_indices, "label")
-    unlabelled_images = data_reader.load_data(unlabelled_indices, "image")
+# Initialize metrics tracking
+supervised_dice_scores = []
+supervised_roc_auc_scores = []
+ssl_dice_scores = []
+ssl_roc_auc_scores = []
 
-    # Define hyperparameters
-    BATCH_SIZE = 4
-    EPOCHS = 10
-    DROPOUT_RATE = 0.3
-    LAMBDA_CONSISTENCY = 1.0
+# Build and compile models
+supervised_model = build_unet(input_shape=train_images.shape[1:], dropout_rate=DROPOUT_RATE)
+supervised_model.compile(optimizer=tf.keras.optimizers.Adam(), loss=combined_loss, metrics=[dice_coefficient])
 
-    # Build U-Net model
-    model = build_unet(input_shape=train_images.shape[1:], dropout_rate=DROPOUT_RATE)
-    model.compile(optimizer=tf.keras.optimizers.Adam(), loss=combined_loss, metrics=[dice_coefficient])
+ssl_model = build_unet(input_shape=train_images.shape[1:], dropout_rate=DROPOUT_RATE)
+ssl_model.compile(optimizer=tf.keras.optimizers.Adam(), loss=combined_loss, metrics=[dice_coefficient])
 
-    # Train U-Net (baseline, no SSL)
-    print("Training U-Net (Baseline, no SSL)...")
-    model.fit(train_images, train_labels, validation_data=(val_images, val_labels), epochs=EPOCHS, batch_size=BATCH_SIZE)
-    baseline_dice = model.evaluate(val_images, val_labels, verbose=0, return_dict=True)['dice_coefficient']
-    print(f"Baseline U-Net Dice Coefficient: {baseline_dice:.4f}")
+# Supervised Training
+print("Training Supervised U-Net...")
+for epoch in range(EPOCHS):
+    supervised_model.fit(
+        train_images, train_labels,
+        validation_data=(val_images, val_labels),
+        epochs=1, batch_size=BATCH_SIZE, verbose=1
+    )
+    val_metrics = supervised_model.evaluate(val_images, val_labels, verbose=0, return_dict=True)
+    supervised_dice_scores.append(val_metrics['dice_coefficient'])
 
-    # Train U-Net with SSL
-    print("Training U-Net with SSL...")
-    for epoch in range(EPOCHS):
-        # Shuffle labelled and unlabelled data
-        train_indices = np.arange(len(train_images))
-        np.random.shuffle(train_indices)
-        train_images = train_images[train_indices]
-        train_labels = train_labels[train_indices]
-        unlabelled_indices = np.arange(len(unlabelled_images))
-        np.random.shuffle(unlabelled_indices)
-        unlabelled_images = unlabelled_images[unlabelled_indices]
+    # Calculate ROC-AUC
+    val_predictions = supervised_model.predict(val_images).flatten()
+    val_labels_flat = val_labels.flatten()
+    val_roc_auc = roc_auc_score(val_labels_flat, val_predictions)
+    supervised_roc_auc_scores.append(val_roc_auc)
 
-        # Training loop
-        for batch_idx in range(len(train_images) // BATCH_SIZE):
-            batch_images = train_images[batch_idx * BATCH_SIZE:(batch_idx + 1) * BATCH_SIZE]
-            batch_labels = train_labels[batch_idx * BATCH_SIZE:(batch_idx + 1) * BATCH_SIZE]
-            batch_unlabelled = unlabelled_images[batch_idx * BATCH_SIZE:(batch_idx + 1) * BATCH_SIZE]
+    print(f"Epoch {epoch + 1}/{EPOCHS}")
 
-            # Augment data
-            augmented_images, augmented_labels = data_augmentation(batch_images, batch_labels)
-            unlabelled_augmented_images, _ = data_augmentation(batch_unlabelled)
+# SSL Training
+print("Training SSL U-Net...")
+for epoch in range(EPOCHS):
+    for batch_idx in range(len(train_images) // BATCH_SIZE):
+        batch_images = train_images[batch_idx * BATCH_SIZE:(batch_idx + 1) * BATCH_SIZE]
+        batch_labels = train_labels[batch_idx * BATCH_SIZE:(batch_idx + 1) * BATCH_SIZE]
+        batch_unlabelled = unlabel_images[batch_idx * BATCH_SIZE:(batch_idx + 1) * BATCH_SIZE]
 
-            with tf.GradientTape() as tape:
-                # Model predictions
-                y_pred = model(batch_images, training=True)
-                unlabelled_y_pred = model(batch_unlabelled, training=True)
-                unlabelled_augmented_y_pred = model(unlabelled_augmented_images, training=True)
+        augmented_images, augmented_labels = data_augmentation(batch_images, batch_labels)
+        unlabelled_augmented_images, _ = data_augmentation(batch_unlabelled)
 
-                # Loss calculation
-                supervised_loss = tf.keras.losses.BinaryCrossentropy()(batch_labels, y_pred)
-                consistency_loss = tf.reduce_mean(tf.square(unlabelled_y_pred - unlabelled_augmented_y_pred))
-                total_loss = supervised_loss + LAMBDA_CONSISTENCY * consistency_loss
+        with tf.GradientTape() as tape:
+            y_pred = ssl_model(augmented_images, training=True)
+            unlabelled_y_pred = ssl_model(batch_unlabelled, training=True)
+            unlabelled_augmented_y_pred = ssl_model(unlabelled_augmented_images, training=True)
 
-            # Apply gradients
-            gradients = tape.gradient(total_loss, model.trainable_variables)
-            model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+            supervised_loss = tf.keras.losses.BinaryCrossentropy()(augmented_labels, y_pred)
+            consistency_loss = tf.reduce_mean(tf.square(unlabelled_y_pred - unlabelled_augmented_y_pred))
+            total_loss = supervised_loss + LAMBDA_CONSISTENCY * consistency_loss
 
-    # Evaluate U-Net with SSL
-    ssl_dice = model.evaluate(val_images, val_labels, verbose=0, return_dict=True)['dice_coefficient']
-    print(f"U-Net with SSL Dice Coefficient: {ssl_dice:.4f}")
+        gradients = tape.gradient(total_loss, ssl_model.trainable_variables)
+        ssl_model.optimizer.apply_gradients(zip(gradients, ssl_model.trainable_variables))
 
-    # Compare results
-    print("Comparison of U-Net Performance:")
-    print(f"Baseline U-Net Dice: {baseline_dice:.4f}")
-    print(f"U-Net with SSL Dice: {ssl_dice:.4f}")
+    # Validation metrics for SSL
+    val_metrics_ssl = ssl_model.evaluate(val_images, val_labels, verbose=0, return_dict=True)
+    ssl_dice_scores.append(val_metrics_ssl['dice_coefficient'])
+
+    # Calculate ROC-AUC for SSL
+    val_predictions_ssl = ssl_model.predict(val_images).flatten()
+    val_roc_auc_ssl = roc_auc_score(val_labels.flatten(), val_predictions_ssl)
+    ssl_roc_auc_scores.append(val_roc_auc_ssl)
+
+    print(f"Epoch {epoch + 1}/{EPOCHS} - SSL Validation Dice: {val_metrics_ssl['dice_coefficient']:.4f}, ROC AUC: {val_roc_auc_ssl:.4f}")
+
+
+# Plot Dice and ROC-AUC metrics
+epochs_range = range(1, EPOCHS + 1)
+
+plt.figure(figsize=(12, 6))
+
+# Dice Coefficient Plot
+plt.subplot(1, 2, 1)
+plt.plot(epochs_range, supervised_dice_scores, label="Supervised Dice", marker="o")
+plt.plot(epochs_range, ssl_dice_scores, label="SSL Dice", marker="x")
+plt.title("Validation Dice Coefficient per Epoch")
+plt.xlabel("Epochs")
+plt.ylabel("Dice Coefficient")
+plt.legend()
+plt.grid(True)
+
+# ROC-AUC Plot
+plt.subplot(1, 2, 2)
+plt.plot(epochs_range, supervised_roc_auc_scores, label="Supervised ROC-AUC", marker="o")
+plt.plot(epochs_range, ssl_roc_auc_scores, label="SSL ROC-AUC", marker="x")
+plt.title("Validation ROC-AUC per Epoch")
+plt.xlabel("Epochs")
+plt.ylabel("ROC-AUC")
+plt.legend()
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
