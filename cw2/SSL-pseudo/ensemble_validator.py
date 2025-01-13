@@ -1,3 +1,5 @@
+# Define several model save paths and calculate their individual average dice scores, and ensemble average dice
+
 import os
 import numpy as np
 import tensorflow as tf
@@ -24,9 +26,9 @@ def calculate_dice_coefficient(predicted, truth):
 if __name__ == "__main__":
     # Define paths to models and validation folder
     model_save_paths = [
-        './MLMI-Group-Project/cw2/saved_models/40_220.tf',
-        './MLMI-Group-Project/cw2/saved_models/42_210.tf',
-        './MLMI-Group-Project/cw2/saved_models/45_285.tf',  # Add more model paths here
+        './MLMI-Group-Project/cw2/saved_models/46_220.tf',
+        './MLMI-Group-Project/cw2/saved_models/47_210.tf',
+        './MLMI-Group-Project/cw2/saved_models/48_230.tf',  # Add more model paths here
     ]
     path_to_val_folder = './MLMI-Group-Project/cw2/val'  # Validation folder path
     size_minibatch = 6  # Minibatch size
